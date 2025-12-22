@@ -8,6 +8,13 @@ interface PlayScriptParams {
     episode?: string,
 }
 
+interface QuickAccess {
+    url: string,
+    image: string,
+    name: string,
+    "bg-color"?: string,
+}
+
 interface PlayEmbedScriptParams {
     media: Record<any, any>,
     season?: string,
@@ -118,4 +125,12 @@ const ShowAd = () => {
 // @ts-expect-error
 const __Plugin__: PluginMetadata | undefined = globalThis["__plugin__"];
 
-export { Play, PlayEmbed, GetPlyinkArgs, Fetch, ShowAd, __Plugin__ }
+const InstallExtension = (data: string) => {
+    window.open(`playlink://open.playlink.dev/?ac=ie&va=${data}`);
+}
+
+const AddQuickAccess = (data: QuickAccess) => {
+    window.open(`add-qa://open.playlink.dev/?b64=${btoa(JSON.stringify(data))}`);
+}
+
+export { Play, PlayEmbed, GetPlyinkArgs, Fetch, ShowAd, InstallExtension, AddQuickAccess, __Plugin__ }

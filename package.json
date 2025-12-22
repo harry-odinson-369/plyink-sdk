@@ -1,9 +1,9 @@
 {
   "name": "plyink-sdk",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/harry-odinson-369/plyink-sdk"
+    "url": "git+https://github.com/harry-odinson-369/plyink-sdk.git"
   },
   "scripts": {
     "test": "cd test && npm test",
@@ -15,12 +15,17 @@
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "merlmovie-sdk": "^16.4.5"
   },
   "devDependencies": {
     "tsup": "^8.4.0",
     "typescript": "^5.8.2"
-  }
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/harry-odinson-369/plyink-sdk/issues"
+  },
+  "homepage": "https://github.com/harry-odinson-369/plyink-sdk#readme",
+  "description": ""
 }
