@@ -26,6 +26,14 @@ interface PlyinkArgs {
     __isPlaylink__?: boolean,
     __extensions__?: Array<{ name?: string, _docId?: string }>,
     __plugin__?: Record<any, any>,
+    __scf__?: string[],
+}
+
+interface ThemeData {
+    brightness: string,
+    bgColor: string,
+    panelBgColor: string,
+    textColor: string,
 }
 
 const Play = (params: PlayScriptParams) => {
@@ -87,6 +95,8 @@ const GetPlyinkArgs = async (): Promise<PlyinkArgs> => {
                 data["__extensions__"] = globalThis["__extensions__"];
                 // @ts-expect-error
                 data["__plugin__"] = globalThis["__plugin__"];
+                // @ts-expect-error
+                data["__scf__"] = globalThis["__scf__"];
                 break;
             }
         }
@@ -105,7 +115,7 @@ const Fetch = async (url: string, headers?: Record<any, any>): Promise<{ status:
         headers: headers || null,
     };
     window.open(`fetch://open.playlink.dev/?b64=${btoa(JSON.stringify(payload))}`);
-    return new Promise(async (resolve) => {
+    const result = await new Promise(async (resolve) => {
         while (true) {
             // @ts-expect-error
             if (globalThis[rand]) {
@@ -116,6 +126,28 @@ const Fetch = async (url: string, headers?: Record<any, any>): Promise<{ status:
             await new Promise((res) => setTimeout(res, 500));
         }
     });
+    // @ts-expect-error
+    delete globalThis[rand];
+    return result as any;
+}
+
+const GetTheme = async (): Promise<ThemeData> => {
+    const rand = `${Math.random() * (99 - 10) + 10}`;
+    window.open(`get-theme://open.playlink.dev/?key=${rand}`);
+    const result = new Promise(async resolve => {
+        while (true) {
+            // @ts-expect-error
+            if (globalThis[rand]) {
+                // @ts-expect-error
+                resolve(globalThis[rand]);
+                break;
+            }
+            await new Promise(res => setTimeout(res, 50));
+        }
+    });
+    // @ts-expect-error
+    delete globalThis[rand];
+    return result as any;
 }
 
 const ShowAd = () => {
@@ -133,4 +165,11 @@ const AddQuickAccess = (data: QuickAccess) => {
     window.open(`add-qa://open.playlink.dev/?b64=${btoa(JSON.stringify(data))}`);
 }
 
-export { Play, PlayEmbed, GetPlyinkArgs, Fetch, ShowAd, InstallExtension, AddQuickAccess, __Plugin__ }
+const AddSCF = (websites: string[]) => {
+    window.open(`add-scf://open.playlink.dev/?websites=${websites.join(",")}`);
+}
+
+// @ts-expect-error
+const SetPopFunc = (popFunc: () => boolean) => { globalThis['__popFunc'] = popFunc; }
+
+export { Play, PlayEmbed, GetPlyinkArgs, Fetch, ShowAd, InstallExtension, AddQuickAccess, SetPopFunc, GetTheme, AddSCF, __Plugin__ }
