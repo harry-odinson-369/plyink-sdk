@@ -111,7 +111,7 @@ const PlayEmbed = (params: PlayEmbedScriptParams) => {
 
 const GetPlyinkArgs = async (): Promise<PlyinkArgs> => {
     let data: PlyinkArgs = {};
-    const result = await waitFor("__isPlaylink__");
+    const result = await waitFor("__isPlaylink__", { timeout: 2000 });
     if (result) {
         data["__isPlaylink__"] = true;
         // @ts-expect-error
