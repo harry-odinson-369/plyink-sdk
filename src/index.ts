@@ -56,6 +56,32 @@ const getImage = (imagePath: string, size?: ImageSize) => {
     return `https://images.tmdb.org/t/p/${(size ?? ImageSize.original).toString()}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
 }
 
+const randomkey = () => `${Math.random() * (99 - 10) + 10}`;
+
+const waitFor = async (key: string, params?: { timeout?: number }): Promise<any> => {
+    const result = await new Promise(async resolve => {
+        let count = 0;
+        while (true) {
+            // @ts-expect-error
+            if (typeof globalThis !== "undefined" && globalThis[key]) {
+                // @ts-expect-error
+                resolve(globalThis[key]);
+                break;
+            }
+            await new Promise(res => setTimeout(res, 50));
+            if (count < (params?.timeout ?? 60000)) {
+                count = count + 50;
+            } else {
+                resolve(undefined);
+                break;
+            }
+        }
+    });
+    // @ts-expect-error
+    delete globalThis[key];
+    return result;
+}
+
 const PlayEmbed = (params: PlayEmbedScriptParams) => {
     const logoPath = params.media.images?.logos?.[0]?.file_path;
     let thumbnail = getImage(params.media.backdrop_path ?? "");
@@ -85,69 +111,36 @@ const PlayEmbed = (params: PlayEmbedScriptParams) => {
 
 const GetPlyinkArgs = async (): Promise<PlyinkArgs> => {
     let data: PlyinkArgs = {};
-    let counter = 0;
-    while (true) {
-        if (typeof globalThis !== "undefined") {
-            // @ts-expect-error
-            if (globalThis["__isPlaylink__"]) {
-                data["__isPlaylink__"] = true;
-                // @ts-expect-error
-                data["__extensions__"] = globalThis["__extensions__"];
-                // @ts-expect-error
-                data["__plugin__"] = globalThis["__plugin__"];
-                // @ts-expect-error
-                data["__scf__"] = globalThis["__scf__"];
-                break;
-            }
-        }
-        await new Promise(resolve => setTimeout(resolve, 200));
-        if (counter >= 1000) break;
-        counter = counter + 200;
+    const result = await waitFor("__isPlaylink__");
+    if (result) {
+        data["__isPlaylink__"] = true;
+        // @ts-expect-error
+        data["__extensions__"] = globalThis["__extensions__"];
+        // @ts-expect-error
+        data["__plugin__"] = globalThis["__plugin__"];
+        // @ts-expect-error
+        data["__scf__"] = globalThis["__scf__"];
     }
     return data;
 }
 
 const Fetch = async (url: string, headers?: Record<any, any>): Promise<{ status: number, body: any } | undefined> => {
-    const rand = `${Math.random() * (99 - 10) + 10}`;
+    const key = randomkey();
     const payload = {
-        key: rand,
+        key: key,
         url: url,
         headers: headers || null,
     };
     window.open(`fetch://open.playlink.dev/?b64=${btoa(JSON.stringify(payload))}`);
-    const result = await new Promise(async (resolve) => {
-        while (true) {
-            // @ts-expect-error
-            if (globalThis[rand]) {
-                // @ts-expect-error
-                resolve(globalThis[rand]);
-                break;
-            }
-            await new Promise((res) => setTimeout(res, 500));
-        }
-    });
-    // @ts-expect-error
-    delete globalThis[rand];
-    return result as any;
+    const result = await waitFor(key, { timeout: 120000 });
+    return result;
 }
 
 const GetTheme = async (): Promise<ThemeData> => {
-    const rand = `${Math.random() * (99 - 10) + 10}`;
-    window.open(`get-theme://open.playlink.dev/?key=${rand}`);
-    const result = new Promise(async resolve => {
-        while (true) {
-            // @ts-expect-error
-            if (globalThis[rand]) {
-                // @ts-expect-error
-                resolve(globalThis[rand]);
-                break;
-            }
-            await new Promise(res => setTimeout(res, 50));
-        }
-    });
-    // @ts-expect-error
-    delete globalThis[rand];
-    return result as any;
+    const key = randomkey();
+    window.open(`get-theme://open.playlink.dev/?key=${key}`);
+    const result = await waitFor(key, { timeout: 1000 });
+    return result;
 }
 
 const ShowAd = () => {
@@ -172,4 +165,11 @@ const AddSCF = (websites: string[]) => {
 // @ts-expect-error
 const SetPopFunc = (popFunc: () => boolean) => { globalThis['__popFunc'] = popFunc; }
 
-export { Play, PlayEmbed, GetPlyinkArgs, Fetch, ShowAd, InstallExtension, AddQuickAccess, SetPopFunc, GetTheme, AddSCF, __Plugin__ }
+const CheckExtension = async (id: string): Promise<PluginMetadata | undefined> => {
+    const key = randomkey();
+    window.open(`check-ext://open.playlink.dev/?id=${id}&key=${key}`);
+    const result = await waitFor(key, { timeout: 3000 });
+    return result;
+}
+
+export { Play, PlayEmbed, Fetch, ShowAd, InstallExtension, AddQuickAccess, SetPopFunc, GetTheme, AddSCF, CheckExtension, GetPlyinkArgs, __Plugin__ }
