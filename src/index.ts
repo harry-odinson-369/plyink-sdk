@@ -24,7 +24,7 @@ interface PlayEmbedScriptParams {
 
 interface PlyinkArgs {
     __isPlaylink__?: boolean,
-    __extensions__?: Array<{ name?: string, _docId?: string }>,
+    __extensions__?: Array<{ name?: string, id?: string }>,
     __plugin__?: Record<any, any>,
     __scf__?: string[],
 }
