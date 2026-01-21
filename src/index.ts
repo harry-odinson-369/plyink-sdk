@@ -70,7 +70,7 @@ const GetTheme = async (): Promise<ThemeData | undefined> => {
         data: {},
     };
     const message = JSON.stringify(payload);
-    const result = await FlutterJsBridge.instance.send(message);
+    const result = await FlutterJsBridge.instance.send(message, { timeoutMs: 2000 });
     let data = JSON.parse(result);
     if (typeof data === "string") data = JSON.parse(data);
     return data;
@@ -121,7 +121,7 @@ const CheckExtension = async (id: string): Promise<PluginMetadata | undefined> =
         data: id,
     };
     const message = JSON.stringify(payload);
-    const result = await FlutterJsBridge.instance.send(message);
+    const result = await FlutterJsBridge.instance.send(message, { timeoutMs: 2000 });
     let data = JSON.parse(result);
     if (typeof data === "string") data = JSON.parse(data);
     return data;
@@ -130,7 +130,7 @@ const CheckExtension = async (id: string): Promise<PluginMetadata | undefined> =
 const isPlaylink = async () => {
     const payload: MessageModel = { action: "isPlaylink", data: {} };
     const message = JSON.stringify(payload);
-    const result = await FlutterJsBridge.instance.send(message);
+    const result = await FlutterJsBridge.instance.send(message, { timeoutMs: 2000 });
     return result === "1";
 }
 
