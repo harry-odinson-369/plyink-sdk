@@ -1,85 +1,22 @@
 import { PluginMetadata } from "merlmovie-sdk";
+import FlutterJsBridge from "./bridge";
+import { MessageModel, PlayEmbedScriptParams, PlayScriptParams, QuickAccess, ThemeData } from "./types";
 
-interface PlayScriptParams {
-    plugin: PluginMetadata,
-    type: string,
-    id: string,
-    season?: string,
-    episode?: string,
-}
+export * from "./types";
+export * from "./bridge";
 
-interface QuickAccess {
-    url: string,
-    image: string,
-    name: string,
-    "bg-color"?: string,
-}
-
-interface PlayEmbedScriptParams {
-    media: Record<any, any>,
-    season?: string,
-    episode?: string,
-    plugin?: PluginMetadata,
-}
-
-interface PlyinkArgs {
-    __isPlaylink__?: boolean,
-    __extensions__?: Array<{ name?: string, id?: string }>,
-    __plugin__?: Record<any, any>,
-    __scf__?: string[],
-}
-
-interface ThemeData {
-    brightness: string,
-    bgColor: string,
-    panelBgColor: string,
-    textColor: string,
-}
-
-const Play = (params: PlayScriptParams) => {
-    const payload = {
-        plugin: params.plugin,
-        type: params.type,
-        id: params.id,
-        season: params.season,
-        episode: params.episode,
-    };
-    const encoded = btoa(JSON.stringify(payload));
-    window.open(`play://open.playlink.dev/?b64=${encoded}`);
+const getImage = (imagePath: string, size?: ImageSize) => {
+    return `https://images.tmdb.org/t/p/${(size ?? ImageSize.original).toString()}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
 }
 
 enum ImageSize {
     original = "original", w500 = "w500", w400 = "w400", w300 = "w300", w200 = "w200"
 }
 
-const getImage = (imagePath: string, size?: ImageSize) => {
-    return `https://images.tmdb.org/t/p/${(size ?? ImageSize.original).toString()}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
-}
-
-const randomkey = () => `${Math.random() * (99 - 10) + 10}`;
-
-const waitFor = async (key: string, params?: { timeout?: number }): Promise<any> => {
-    const result = await new Promise(async resolve => {
-        let count = 0;
-        while (true) {
-            // @ts-expect-error
-            if (typeof globalThis !== "undefined" && globalThis[key]) {
-                // @ts-expect-error
-                resolve(globalThis[key]);
-                break;
-            }
-            await new Promise(res => setTimeout(res, 50));
-            if (count < (params?.timeout ?? 60000)) {
-                count = count + 50;
-            } else {
-                resolve(undefined);
-                break;
-            }
-        }
-    });
-    // @ts-expect-error
-    delete globalThis[key];
-    return result;
+const Play = (params: PlayScriptParams) => {
+    const payload: MessageModel = { action: "play", data: params };
+    const message = JSON.stringify(payload);
+    return FlutterJsBridge.instance.send(message);
 }
 
 const PlayEmbed = (params: PlayEmbedScriptParams) => {
@@ -90,86 +27,120 @@ const PlayEmbed = (params: PlayEmbedScriptParams) => {
         const episode = season?.episodes?.find((e: any) => e.episode_number === parseInt(params.episode ?? "1"));
         if (episode) thumbnail = getImage(episode.still_path ?? "");
     }
-    const embed = JSON.stringify({
-        title: params.media.title ?? params.media.name,
-        title_logo: logoPath ? getImage(logoPath ?? "") : null,
-        thumbnail: thumbnail,
-        tmdb_id: `${params.media.id}`,
-        imdb_id: params.media.external_ids?.imdb_id,
-        type: params.media.name ? "tv" : "movie",
-        season: params.media.name ? (params.season ?? "1") : null,
-        episode: params.media.name ? (params.episode ?? "1") : null,
-        detail: params.media,
-        plugin: params.plugin ?? {
-            name: "VENUS.SH",
-            _docId: "venus-sh-plyink"
-        },
-    });
-    // @ts-expect-error
-    PlayEmbedChannel.postMessage(embed);
+    const payload: MessageModel = {
+        action: "playEmbed",
+        data: {
+            title: params.media.title ?? params.media.name,
+            title_logo: logoPath ? getImage(logoPath ?? "") : null,
+            thumbnail: thumbnail,
+            tmdb_id: `${params.media.id}`,
+            imdb_id: params.media.external_ids?.imdb_id,
+            type: params.media.name ? "tv" : "movie",
+            season: params.media.name ? (params.season ?? "1") : null,
+            episode: params.media.name ? (params.episode ?? "1") : null,
+            detail: params.media,
+            plugin: params.plugin,
+        }
+    };
+    const message = JSON.stringify(payload);
+    return FlutterJsBridge.instance.send(message);
 }
 
-const GetPlyinkArgs = async (): Promise<PlyinkArgs> => {
-    let data: PlyinkArgs = {};
-    const result = await waitFor("__isPlaylink__", { timeout: 2000 });
-    if (result) {
-        data["__isPlaylink__"] = true;
-        // @ts-expect-error
-        data["__extensions__"] = globalThis["__extensions__"];
-        // @ts-expect-error
-        data["__plugin__"] = globalThis["__plugin__"];
-        // @ts-expect-error
-        data["__scf__"] = globalThis["__scf__"];
-    }
+const Fetch = async (url: string, params?: { method?: string, headers?: Record<any, any>, body?: any, timeoutMs?: number }): Promise<{ status: number, body: any } | undefined> => {
+    const payload: MessageModel = {
+        action: "fetch",
+        data: {
+            url: url,
+            headers: params?.headers || null,
+            method: params?.method || "GET",
+            body: params?.body || null,
+        }
+    };
+    const message = JSON.stringify(payload);
+    const result = await FlutterJsBridge.instance.send(message, { timeoutMs: params?.timeoutMs });
+    if (!result) return { status: 500, body: "" };
+    let data = JSON.parse(result);
+    if (typeof data === "string") data = JSON.parse(data);
     return data;
 }
 
-const Fetch = async (url: string, headers?: Record<any, any>): Promise<{ status: number, body: any } | undefined> => {
-    const key = randomkey();
-    const payload = {
-        key: key,
-        url: url,
-        headers: headers || null,
+const GetTheme = async (): Promise<ThemeData | undefined> => {
+    const payload: MessageModel = {
+        action: "getTheme",
+        data: {},
     };
-    window.open(`fetch://open.playlink.dev/?b64=${btoa(JSON.stringify(payload))}`);
-    const result = await waitFor(key, { timeout: 120000 });
-    return result;
-}
-
-const GetTheme = async (): Promise<ThemeData> => {
-    const key = randomkey();
-    window.open(`get-theme://open.playlink.dev/?key=${key}`);
-    const result = await waitFor(key, { timeout: 1000 });
-    return result;
+    const message = JSON.stringify(payload);
+    const result = await FlutterJsBridge.instance.send(message);
+    let data = JSON.parse(result);
+    if (typeof data === "string") data = JSON.parse(data);
+    return data;
 }
 
 const ShowAd = () => {
-    window.open("show-ad://open.playlink.dev");
+    const payload: MessageModel = {
+        action: "showAd",
+        data: {},
+    };
+    const message = JSON.stringify(payload);
+    return FlutterJsBridge.instance.send(message);
 }
 
-// @ts-expect-error
-const __Plugin__: PluginMetadata | undefined = globalThis["__plugin__"];
-
-const InstallExtension = (data: string) => {
-    window.open(`playlink://open.playlink.dev/?ac=ie&va=${data}`);
+const InstallExtension = (data: string | PluginMetadata) => {
+    const payload: MessageModel = {
+        action: "installExtension",
+        data: data,
+    };
+    const message = JSON.stringify(payload);
+    return FlutterJsBridge.instance.send(message);
 }
 
 const AddQuickAccess = (data: QuickAccess) => {
-    window.open(`add-qa://open.playlink.dev/?b64=${btoa(JSON.stringify(data))}`);
+    const payload: MessageModel = {
+        action: "addQuickAccess",
+        data: data,
+    };
+    const message = JSON.stringify(payload);
+    return FlutterJsBridge.instance.send(message);
 }
 
 const AddSCF = (websites: string[]) => {
-    window.open(`add-scf://open.playlink.dev/?websites=${websites.join(",")}`);
+    const payload: MessageModel = {
+        action: "addSCF",
+        data: websites,
+    };
+    const message = JSON.stringify(payload);
+    return FlutterJsBridge.instance.send(message);
 }
 
 // @ts-expect-error
 const SetPopFunc = (popFunc: () => boolean) => { globalThis['__popFunc'] = popFunc; }
 
 const CheckExtension = async (id: string): Promise<PluginMetadata | undefined> => {
-    const key = randomkey();
-    window.open(`check-ext://open.playlink.dev/?id=${id}&key=${key}`);
-    const result = await waitFor(key, { timeout: 3000 });
-    return result;
+    const payload: MessageModel = {
+        action: "checkExtension",
+        data: id,
+    };
+    const message = JSON.stringify(payload);
+    const result = await FlutterJsBridge.instance.send(message);
+    let data = JSON.parse(result);
+    if (typeof data === "string") data = JSON.parse(data);
+    return data;
 }
 
-export { Play, PlayEmbed, Fetch, ShowAd, InstallExtension, AddQuickAccess, SetPopFunc, GetTheme, AddSCF, CheckExtension, GetPlyinkArgs, __Plugin__ }
+const isPlaylink = async () => {
+    const payload: MessageModel = { action: "isPlaylink", data: {} };
+    const message = JSON.stringify(payload);
+    const result = await FlutterJsBridge.instance.send(message);
+    return result === "1";
+}
+
+const GetSCF = async (): Promise<string[]> => {
+    const payload: MessageModel = { action: "getSCF", data: {} };
+    const message = JSON.stringify(payload);
+    const result = await FlutterJsBridge.instance.send(message);
+    let data = JSON.parse(result);
+    if (typeof data === "string") data = JSON.parse(data);
+    return data; 
+}
+
+export { Play, PlayEmbed, Fetch, ShowAd, InstallExtension, AddQuickAccess, SetPopFunc, GetTheme, AddSCF, CheckExtension, GetSCF, isPlaylink }
