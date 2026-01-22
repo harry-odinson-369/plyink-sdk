@@ -1,72 +1,70 @@
 export default class FlutterJsBridge {
     private constructor() { }
-    private static _instance: FlutterJsBridge = new FlutterJsBridge();
+    private static _instance = new FlutterJsBridge();
     static get instance() { return this._instance; }
 
-    private readyPromise?: Promise<void>;
+    private static seq = 0;
 
     async send(message: string, params?: { timeoutMs?: number }): Promise<any> {
-        await this.isReady();
-        return new Promise<any>((resolve, reject) => {
-            const key = this._getRandomKey;
+        const ready = await this.isReady();
+        if (!ready) return undefined;
+        return new Promise(resolve => {
+            const funcName = this._getCallbackName();
+
             // @ts-ignore
-            globalThis["__pending__"].set(key, { resolve, reject });
-            const payload = JSON.stringify({ key: key, message });
-            this.post(payload);
+            if (!globalThis.__flutterCallbacks__) {
+                // @ts-ignore
+                globalThis.__flutterCallbacks__ = Object.create(null);
+            }
+
+            let done = false;
+
+            // @ts-ignore
+            globalThis.__flutterCallbacks__[funcName] = (result: any) => {
+                if (done) return;
+                done = true;
+                resolve(result);
+                // @ts-ignore
+                delete globalThis.__flutterCallbacks__[funcName];
+            };
+
+            this.post(JSON.stringify({ func: funcName, message }));
+
             setTimeout(() => {
+                if (done) return;
+                done = true;
+                resolve(undefined);
                 // @ts-ignore
-                const entry = globalThis["__pending__"].get(key);
-                if (!entry) return;
-                entry.resolve(undefined);
-                // @ts-ignore
-                globalThis["__pending__"].delete(key);
-            }, params?.timeoutMs || 60000);
+                delete globalThis.__flutterCallbacks__[funcName];
+            }, params?.timeoutMs ?? 60000);
         });
     }
 
     async isReady(): Promise<boolean> {
-        if (this.readyPromise) return this.readyPromise.then(() => true);
-        this.readyPromise = new Promise((resolve) => {
-            const check = async () => {
-                // @ts-ignore
-                if (typeof FlutterJsBridgeChannel !== "undefined") {
+        return new Promise<boolean>(async resolve => {
+            await new Promise(res => setTimeout(res, 200));
+            // @ts-ignore
+            if (typeof globalThis.FlutterJsBridgeChannel !== "undefined") {
+                resolve(true);
+            } else {
+                setTimeout(() => {
                     // @ts-ignore
-                    if (typeof globalThis["__pending__"] === "undefined") {
-                        // @ts-ignore
-                        globalThis["__pending__"] = new Map<string, { resolve: Function, reject: Function }>();
+                    if (typeof globalThis.FlutterJsBridgeChannel !== "undefined") {
+                        resolve(true);
+                    } else {
+                        resolve(false);
                     }
-                    // @ts-ignore
-                    if (typeof globalThis["__resolveResult"] === "undefined") {
-                        // @ts-ignore
-                        globalThis["__resolveResult"] = (key: string, message: any) => {
-                            // @ts-ignore
-                            const entry = globalThis["__pending__"].get(key);
-                            if (!entry) return;
-                            entry.resolve(message);
-                            // @ts-ignore
-                            globalThis["__pending__"].delete(key);
-                        }
-                    }
-                    resolve();
-                    return;
-                }
-                setTimeout(check, 100);
-            };
-            check();
+                }, 1800);
+            }
         });
-        return this.readyPromise.then(() => true);
     }
 
     private post(message: string) {
         // @ts-ignore
-        FlutterJsBridgeChannel.postMessage(message);
+        globalThis.FlutterJsBridgeChannel.postMessage(message);
     }
 
-    private get _getRandomKey() {
-        return this.__random(999, 99999).toString();
-    }
-
-    private __random(min: number, max: number) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
+    private _getCallbackName() {
+        return `cb_${Date.now()}_${FlutterJsBridge.seq++}`;
     }
 }
