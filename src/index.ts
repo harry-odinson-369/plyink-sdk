@@ -1,15 +1,7 @@
 import { PluginMetadata } from "merlmovie-sdk";
 import FlutterJsBridge from "./bridge";
 import FlutterJsBridgeEventEmitter from "./event";
-import { MessageModel, PlayEmbedScriptParams, PlayScriptParams, QuickAccess, ThemeData } from "./types";
-
-const getImage = (imagePath: string, size?: ImageSize) => {
-    return `https://images.tmdb.org/t/p/${(size ?? ImageSize.original).toString()}${imagePath.startsWith("/") ? "" : "/"}${imagePath}`;
-}
-
-enum ImageSize {
-    original = "original", w500 = "w500", w400 = "w400", w300 = "w300", w200 = "w200"
-}
+import { AppInfo, MessageModel, PlayEmbedScriptParams, PlayScriptParams, QuickAccess, ThemeData } from "./types";
 
 export default class PlyinkSDK {
     private constructor() { }
@@ -56,13 +48,13 @@ export default class PlyinkSDK {
         return result;
     }
 
-    static getTheme = async (): Promise<ThemeData | undefined> => {
+    static getTheme = async (params?: { ms?: number }): Promise<ThemeData | undefined> => {
         const payload: MessageModel = {
             action: "getTheme",
             data: {},
         };
         const message = JSON.stringify(payload);
-        let result = await FlutterJsBridge.instance.send(message, { timeoutMs: 2000 });
+        let result = await FlutterJsBridge.instance.send(message, { timeoutMs: params?.ms || 2000 });
         if (!result) return undefined;
         if (typeof result === "string") result = JSON.parse(result);
         return result;
@@ -138,11 +130,29 @@ export default class PlyinkSDK {
         return result;
     }
 
-    static isPlaylink = async () => {
+    static isPlaylink = async (params?: { ms?: number }) => {
         const payload: MessageModel = { action: "isPlaylink", data: {} };
         const message = JSON.stringify(payload);
-        const result = await FlutterJsBridge.instance.send(message, { timeoutMs: 2000 });
+        const result = await FlutterJsBridge.instance.send(message, { timeoutMs: params?.ms || 2000 });
         return result === "1";
+    }
+
+    static getAppInfo = async (): Promise<AppInfo | undefined> => {
+        const payload: MessageModel = { action: "getAppInfo", data: {} };
+        const message = JSON.stringify(payload);
+        let result = await FlutterJsBridge.instance.send(message, { timeoutMs: 2000 });
+        if (!result) return undefined;
+        if (typeof result === "string") result = JSON.parse(result);
+        return result;
+    }
+
+    static isCanShowAd = async (): Promise<boolean | undefined> => {
+        const payload: MessageModel = { action: "canShowAd", data: {} };
+        const message = JSON.stringify(payload);
+        let result = await FlutterJsBridge.instance.send(message, { timeoutMs: 2000 });
+        if (!result) return undefined;
+        if (typeof result === "string") result = JSON.parse(result);
+        return result.isCanShowAd === true;
     }
 
 }

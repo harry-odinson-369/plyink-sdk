@@ -33,3 +33,14 @@ export interface ThemeData {
     panelBgColor: string,
     textColor: string,
 }
+
+export interface AppInfo {
+    appName: string,
+    packageName: string,
+    buildNumber: string,
+    version: string,
+    buildSignature?: string,
+    installerStore?: string,
+    installTime?: string,
+    updateTime?: string,
+}
