@@ -33,28 +33,7 @@ export default class PlyinkSDK {
     }
 
     static playEmbed = (params: PlayEmbedScriptParams) => {
-        const logoPath = params.media.images?.logos?.[0]?.file_path;
-        let thumbnail = getImage(params.media.backdrop_path ?? "");
-        if (params.season && params.episode) {
-            const season = params.media.seasons?.find((e: any) => e.season_number === parseInt(params.season ?? "1"));
-            const episode = season?.episodes?.find((e: any) => e.episode_number === parseInt(params.episode ?? "1"));
-            if (episode) thumbnail = getImage(episode.still_path ?? "");
-        }
-        const payload: MessageModel = {
-            action: "playEmbed",
-            data: {
-                title: params.media.title ?? params.media.name,
-                title_logo: logoPath ? getImage(logoPath ?? "") : null,
-                thumbnail: thumbnail,
-                tmdb_id: `${params.media.id}`,
-                imdb_id: params.media.external_ids?.imdb_id,
-                type: params.media.name ? "tv" : "movie",
-                season: params.media.name ? (params.season ?? "1") : null,
-                episode: params.media.name ? (params.episode ?? "1") : null,
-                detail: params.media,
-                plugin: params.plugin,
-            }
-        };
+        const payload: MessageModel = { action: "playEmbed", data: params };
         const message = JSON.stringify(payload);
         return FlutterJsBridge.instance.send(message);
     }

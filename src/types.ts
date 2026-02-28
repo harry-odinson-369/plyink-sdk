@@ -6,7 +6,7 @@ export interface MessageModel {
 }
 
 export interface PlayScriptParams {
-    plugin: PluginMetadata,
+    plugins: PluginMetadata[],
     type: string,
     id: string,
     season?: string,
@@ -21,10 +21,10 @@ export interface QuickAccess {
 }
 
 export interface PlayEmbedScriptParams {
+    plugins: PluginMetadata[],
     media: Record<any, any>,
     season?: string,
     episode?: string,
-    plugin: PluginMetadata,
 }
 
 export interface ThemeData {
