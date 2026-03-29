@@ -155,6 +155,15 @@ export default class PlyinkSDK {
         return result.isCanShowAd === true;
     }
 
+    static isInFullScreenView = async (): Promise<boolean | undefined> => {
+        const payload: MessageModel = { action: "isFullScreen", data: {} };
+        const message = JSON.stringify(payload);
+        let result = await FlutterJsBridge.instance.send(message, { timeoutMs: 2000 });
+        if (!result) return undefined;
+        if (typeof result === "string") result = JSON.parse(result);
+        return result.isFullScreen === true;
+    }
+
 }
 
 export { FlutterJsBridge }
