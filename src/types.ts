@@ -11,6 +11,7 @@ export interface PlayScriptParams {
     id: string,
     season?: string,
     episode?: string,
+    zen_mode?: boolean,
 }
 
 export interface QuickAccess {
@@ -25,6 +26,7 @@ export interface PlayEmbedScriptParams {
     media: Record<any, any>,
     season?: string,
     episode?: string,
+    zen_mode?: boolean,
 }
 
 export interface ThemeData {
